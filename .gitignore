@@ -1,0 +1,5 @@
+# GAN-UAV Dynamic Path Planning
+__pycache__/
+*.pyc
+checkpoints/
+.superpowers/
