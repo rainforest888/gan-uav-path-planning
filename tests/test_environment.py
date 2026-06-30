@@ -22,8 +22,8 @@ def test_start_goal_not_in_obstacle():
     VOXEL_RES = 32
     si, sj = int(start[1] * (VOXEL_RES - 1)), int(start[0] * (VOXEL_RES - 1))
     gi, gj = int(goal[1] * (VOXEL_RES - 1)), int(goal[0] * (VOXEL_RES - 1))
-    si, sj = max(0, min(VOXEL_RES - 1, si)), max(0, min(VOXEL_RES - 1, sj))
-    gi, gj = max(0, min(VOXEL_RES - 1, gi)), max(0, min(VOXEL_RES - 1, gj))
+    si, sj = min(VOXEL_RES - 1, max(0, si)), min(VOXEL_RES - 1, max(0, sj))
+    gi, gj = min(VOXEL_RES - 1, max(0, gi)), min(VOXEL_RES - 1, max(0, gj))
     assert V[si, sj] == 0, f"Start at ({si},{sj}) is obstructed"
     assert V[gi, gj] == 0, f"Goal at ({gi},{gj}) is obstructed"
 
