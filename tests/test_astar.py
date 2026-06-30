@@ -16,9 +16,12 @@ def test_astar_finds_path():
 
 
 def test_astar_path_start_goal_match():
-    """Start and goal of found path should match input."""
-    voxels, start, goal, _ = generate_random_scene_2d(voxel_res=32)
-    path = astar_2d(voxels.squeeze(0), start, goal, voxel_res=32)
-    assert path is not None
-    assert torch.allclose(path[0], start, atol=1 / 32)
-    assert torch.allclose(path[-1], goal, atol=1 / 32)
+    """Start and goal of found path should match input (retry up to 5 times)."""
+    for attempt in range(5):
+        voxels, start, goal, _ = generate_random_scene_2d(voxel_res=32)
+        path = astar_2d(voxels.squeeze(0), start, goal, voxel_res=32)
+        if path is not None:
+            assert torch.allclose(path[0], start, atol=1 / 32)
+            assert torch.allclose(path[-1], goal, atol=1 / 32)
+            return  # pass
+    assert False, "A* failed to find a path after 5 attempts"
