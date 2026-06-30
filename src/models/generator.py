@@ -22,5 +22,5 @@ class Generator(nn.Module):
         x = torch.cat([z, c], dim=1)
         out = self.net(x)
         out = out.view(-1, self.k, self.dim_out)
-        out = torch.tanh(out)  # [-1, 1], denormalize later
+        out = torch.sigmoid(out)  # [0, 1], no denormalize needed
         return out

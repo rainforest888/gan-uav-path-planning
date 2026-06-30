@@ -78,8 +78,7 @@ class Trainer:
             c = self.E_env(voxels, start, goal)
             z = torch.randn(B, LATENT_DIM, device=self.device)
             tau_fake_wp = self.G(z, c)  # (B, K, dim) in [-1,1]
-            tau_fake_wp_01 = (tau_fake_wp + 1) / 2
-            tau_fake_full = cubic_spline_trajectory(tau_fake_wp_01, N_TRAJECTORY)
+            tau_fake_full = cubic_spline_trajectory(tau_fake_wp, N_TRAJECTORY)
 
             d_loss = critic_loss(self.D, tau_real, tau_fake_full, c)
             gp = gradient_penalty(self.D, tau_real, tau_fake_full, c)
@@ -98,8 +97,7 @@ class Trainer:
                 c = self.E_env(voxels, start, goal)
                 z = torch.randn(B, LATENT_DIM, device=self.device)
                 tau_fake_wp = self.G(z, c)
-                tau_fake_wp_01 = (tau_fake_wp + 1) / 2
-                tau_fake_full = cubic_spline_trajectory(tau_fake_wp_01, N_TRAJECTORY)
+                tau_fake_full = cubic_spline_trajectory(tau_fake_wp, N_TRAJECTORY)
 
                 # Adversarial loss
                 l_adv = generator_adv_loss(self.D, tau_fake_full, c)
@@ -113,7 +111,7 @@ class Trainer:
                 z_b = torch.randn(B, LATENT_DIM, device=self.device)
                 l_conv = convexity_loss(
                     self.G, z, z_b, c, voxels,
-                    lambda wp: cubic_spline_trajectory((wp + 1) / 2, N_TRAJECTORY),
+                    lambda wp: cubic_spline_trajectory(wp, N_TRAJECTORY),
                     mode=self.mode
                 )
 

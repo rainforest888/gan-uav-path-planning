@@ -15,9 +15,8 @@ from online_planner import OnlinePlanner
 from evaluator import compute_metrics, run_astar_baseline
 from interpolation import cubic_spline_trajectory
 
-SIM_DURATION = 10.0  # seconds
-AGENT_SPEED = 2.0    # m/s
-DYNAMIC_OBS_SPEED = 1.0  # m/s
+SIM_DURATION = 15.0  # seconds (longer run)
+DYNAMIC_OBS_SPEED = 0.3  # m/s (slower obstacles for debugging)
 DT = 1.0 / REPLAN_HZ
 
 
@@ -78,19 +77,20 @@ class DynamicSimulator:
             z_prev, c, voxels.unsqueeze(0).to(self.planner.device)
         )
 
-        # Move agent one step along trajectory
-        direction = traj[1] - traj[0]
-        step_size = AGENT_SPEED * DT / 10.0  # normalized units
-        norm = np.linalg.norm(direction)
-        if norm > 0:
-            self.agent_pos = self.agent_pos + torch.tensor(
-                direction / norm * step_size, dtype=torch.float32
-            )
+        # Follow the planned trajectory: move several waypoints along it
+        pos_np = self.agent_pos.numpy()
+        # Find closest point on trajectory, advance by several steps
+        dists = np.linalg.norm(traj - pos_np, axis=1)
+        closest_idx = int(np.argmin(dists))
+        advance = 5  # jump ahead 5 trajectory points per step
+        target_idx = min(closest_idx + advance, len(traj) - 1)
+        target = torch.tensor(traj[target_idx], dtype=torch.float32)
+        self.agent_pos = target
 
         dist_to_goal = torch.norm(self.agent_pos - self.goal).item()
         return z_new, traj, voxels, dist_to_goal
 
-    def run(self, max_steps=200):
+    def run(self, max_steps=300):
         z_prev = self.planner.initialize()
         all_trajs = []
         all_voxels = []
@@ -115,19 +115,33 @@ def main():
 
     planner = OnlinePlanner(dim=2, checkpoint_path='checkpoints/phase1_final.pt', device=device)
 
-    # Generate a dynamic test scene
-    voxels, start, goal, obs_list = generate_random_scene_2d(voxel_res=VOXEL_RES)
+    # Run multiple scenarios and aggregate
+    all_metrics = []
+    n_scenarios = 5
+    for s in range(n_scenarios):
+        voxels, start, goal, obs_list = generate_random_scene_2d(voxel_res=VOXEL_RES)
+        sim = DynamicSimulator(planner, voxel_res=VOXEL_RES)
+        sim.reset(voxels, start, goal, obs_list)
 
-    sim = DynamicSimulator(planner, voxel_res=VOXEL_RES)
-    sim.reset(voxels, start, goal, obs_list)
+        trajs, voxels_seq, positions, distances = sim.run(max_steps=200)
+        metrics = compute_metrics(trajs, voxels_seq, start, goal)
+        all_metrics.append(metrics)
+        print(f"  Scenario {s+1}: success={metrics['success']}, "
+              f"length={metrics['path_length']:.1f}, "
+              f"final_dist={distances[-1]:.3f}")
 
-    print("Running dynamic simulation...")
-    trajs, voxels_seq, positions, distances = sim.run(max_steps=200)
+    # Aggregate
+    successes = [m['success'] for m in all_metrics]
+    lengths = [m['path_length'] for m in all_metrics]
+    hausdorffs = [m['mean_hausdorff'] for m in all_metrics]
+    jerks = [m['mean_jerk'] for m in all_metrics]
+    print(f"\n=== Aggregate over {n_scenarios} scenarios ===")
+    print(f"Success rate: {sum(successes)/len(successes):.1%}")
+    print(f"Path length:  {sum(lengths)/len(lengths):.1f} ± {np.std(lengths):.1f}")
+    print(f"Hausdorff:    {sum(hausdorffs)/len(hausdorffs):.5f} ± {np.std(hausdorffs):.5f}")
+    print(f"Jerk:         {sum(jerks)/len(jerks):.6f} ± {np.std(jerks):.6f}")
 
-    metrics = compute_metrics(trajs, voxels_seq, start, goal)
-    print(f"Metrics: {metrics}")
-
-    # Save animation
+    # Save animation from last scenario
     fig, ax = plt.subplots(1, 1, figsize=(8, 8))
 
     def animate(frame):

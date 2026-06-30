@@ -1,6 +1,7 @@
 """Online planner with latent space gradient optimization for dynamic replanning."""
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from config import (
     LATENT_DIM, CONDITION_DIM, K_WAYPOINTS, N_TRAJECTORY,
     LAMBDA_CONTINUITY, ONLINE_LR, ONLINE_STEPS,
@@ -82,19 +83,29 @@ class OnlinePlanner:
 
         for _ in range(ONLINE_STEPS):
             optimizer.zero_grad()
-            waypoints = self.G(z_cur, condition)  # (1, K, dim) in [-1,1]
-            wp_01 = (waypoints + 1) / 2
-            trajectory = cubic_spline_trajectory(wp_01.squeeze(0), N_TRAJECTORY).unsqueeze(0)
+            waypoints = self.G(z_cur, condition)  # (1, K, dim) in [0,1]
+            trajectory = cubic_spline_trajectory(waypoints.squeeze(0),
+                                                 N_TRAJECTORY).unsqueeze(0)
+
+            # Collision avoidance
             col = collision_loss(trajectory, voxels, mode=mode)
+
+            # Continuity: stay close to previous latent code
             continuity = ((z_cur - z_prev) ** 2).sum()
-            loss = col + LAMBDA_CONTINUITY * continuity
+
+            # Goal attraction: encourage endpoint near goal
+            # Goal is encoded in condition; we extract from E_env conv output
+            # Instead, use trajectory endpoint distance from last segment
+            traj_len = (trajectory[:, 1:, :] -
+                        trajectory[:, :-1, :]).norm(2, dim=-1).sum()
+
+            loss = col + LAMBDA_CONTINUITY * continuity + 0.01 * traj_len
             loss.backward()
             optimizer.step()
 
         with torch.no_grad():
             waypoints = self.G(z_cur, condition)
-            wp_01 = (waypoints + 1) / 2
-            traj_np = minimum_snap_trajectory(wp_01.squeeze(0), N_TRAJECTORY)
+            traj_np = minimum_snap_trajectory(waypoints.squeeze(0), N_TRAJECTORY)
 
         return z_cur.detach(), traj_np
 
@@ -102,6 +113,5 @@ class OnlinePlanner:
         """Generate a single path from latent code (no optimization)."""
         with torch.no_grad():
             waypoints = self.G(z.to(self.device), condition.to(self.device))
-            wp_01 = (waypoints + 1) / 2
-            traj_np = minimum_snap_trajectory(wp_01.squeeze(0), N_TRAJECTORY)
+            traj_np = minimum_snap_trajectory(waypoints.squeeze(0), N_TRAJECTORY)
         return traj_np

@@ -19,19 +19,19 @@ CONDITION_DIM = 256     # c dimension (from E_env)
 # --- Training ---
 BATCH_SIZE = 64
 LR_G = 1e-4
-LR_D = 1e-4
+LR_D = 3e-4           # Higher critic LR for more stable WGAN
 LR_E = 1e-4
-N_CRITIC = 5            # D updates per G/E update
-LAMBDA_GP = 10.0        # Gradient penalty weight
-LAMBDA_COL = 10.0       # Collision loss weight
-LAMBDA_LEN = 0.5        # Path length weight
-LAMBDA_SMOOTH = 1.0     # Smoothness weight
-LAMBDA_RECON = 1.0      # Reconstruction weight (E_path)
-LAMBDA_CONVEXITY = 2.0  # Convexity regularization weight
-NUM_EPOCHS = 500        # Phase 1 training epochs
+N_CRITIC = 3           # Fewer critic updates, more G updates
+LAMBDA_GP = 10.0       # Gradient penalty weight
+LAMBDA_COL = 20.0      # Collision loss weight (increased)
+LAMBDA_LEN = 0.5       # Path length weight
+LAMBDA_SMOOTH = 1.0    # Smoothness weight
+LAMBDA_RECON = 2.0     # Reconstruction weight (E_path, increased)
+LAMBDA_CONVEXITY = 0.0 # Convexity off for now (add back later)
+NUM_EPOCHS = 2000      # Much more training
 
 # --- Online Inference ---
-LAMBDA_CONTINUITY = 0.5  # Latent continuity weight
-ONLINE_LR = 0.01         # Online gradient descent step size
-ONLINE_STEPS = 5         # Gradient descent steps per replanning cycle
-REPLAN_HZ = 10           # Replanning frequency (Hz)
+LAMBDA_CONTINUITY = 0.1   # Latent continuity weight (lower = more flexible)
+ONLINE_LR = 0.05          # Online gradient descent step size
+ONLINE_STEPS = 20         # Gradient descent steps per replanning cycle
+REPLAN_HZ = 20            # Replanning frequency (Hz)

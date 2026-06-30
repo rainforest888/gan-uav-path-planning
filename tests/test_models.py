@@ -28,7 +28,7 @@ def test_generator_output_shape():
     g = Generator(dim_out=2)
     waypoints = g(z, c)
     assert waypoints.shape == (B, K_WAYPOINTS, 2)
-    assert waypoints.min() >= -1.0 and waypoints.max() <= 1.0
+    assert waypoints.min() >= 0.0 and waypoints.max() <= 1.0
 
 
 def test_critic_output_shape():
