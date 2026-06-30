@@ -82,7 +82,7 @@ class DynamicSimulator:
         # Find closest point on trajectory, advance by several steps
         dists = np.linalg.norm(traj - pos_np, axis=1)
         closest_idx = int(np.argmin(dists))
-        advance = 5  # jump ahead 5 trajectory points per step
+        advance = 10  # jump ahead 10 trajectory points per step (faster)
         target_idx = min(closest_idx + advance, len(traj) - 1)
         target = torch.tensor(traj[target_idx], dtype=torch.float32)
         self.agent_pos = target
@@ -90,7 +90,7 @@ class DynamicSimulator:
         dist_to_goal = torch.norm(self.agent_pos - self.goal).item()
         return z_new, traj, voxels, dist_to_goal
 
-    def run(self, max_steps=300):
+    def run(self, max_steps=150):
         z_prev = self.planner.initialize()
         all_trajs = []
         all_voxels = []
@@ -103,7 +103,7 @@ class DynamicSimulator:
             all_voxels.append(voxels)
             all_positions.append(self.agent_pos.clone())
             distances.append(dist)
-            if dist < 0.05:
+            if dist < 0.03:  # tighter goal threshold
                 break
 
         return all_trajs, all_voxels, all_positions, distances

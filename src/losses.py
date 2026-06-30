@@ -82,6 +82,16 @@ def reconstruction_loss(G, E_path, tau_real, c):
     return F.mse_loss(tau_recon_waypoints, tau_real_sub)
 
 
+def endpoint_loss(trajectory, goal):
+    """L_endpoint = ||trajectory_last - goal||^2.
+    Encourages the generated path to end at the goal.
+    Args:
+        trajectory: (B, N, dim) in [0,1] coords
+        goal: (B, dim) in [0,1] coords
+    """
+    return F.mse_loss(trajectory[:, -1, :], goal)
+
+
 def convexity_loss(G, z_a, z_b, c_a, voxels_a, interpolation, mode='2d'):
     """L_convexity: interpolated latent should produce collision-free paths.
     Args:

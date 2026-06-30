@@ -19,7 +19,7 @@ from interpolation import cubic_spline_trajectory
 from losses import (
     critic_loss, generator_adv_loss, gradient_penalty,
     collision_loss, path_length_loss, smoothness_loss,
-    reconstruction_loss, convexity_loss,
+    reconstruction_loss, convexity_loss, endpoint_loss,
 )
 
 
@@ -114,13 +114,16 @@ class Trainer:
                     lambda wp: cubic_spline_trajectory(wp, N_TRAJECTORY),
                     mode=self.mode
                 )
+                # Endpoint loss: path must end at goal
+                l_endp = endpoint_loss(tau_fake_full, goal)
 
                 loss_G = (l_adv +
                           LAMBDA_COL * l_col +
                           LAMBDA_LEN * l_len +
                           LAMBDA_SMOOTH * l_smooth +
                           LAMBDA_RECON * l_recon +
-                          LAMBDA_CONVEXITY * l_conv)
+                          LAMBDA_CONVEXITY * l_conv +
+                          10.0 * l_endp)      # λ_endp=10 — must reach goal
                 loss_G.backward()
                 self.opt_G.step()
                 self.opt_E.step()
